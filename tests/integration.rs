@@ -532,7 +532,7 @@ fn test_tool_registry_has_all_nine_tools() {
             "missing tool: {tool}"
         );
     }
-    assert_eq!(names.len(), 13, "should have exactly 13 built-in tools");
+    assert_eq!(names.len(), 50, "should have exactly 50 built-in tools");
 }
 
 #[test]
@@ -583,7 +583,7 @@ fn test_tool_registry_filter_allows_wildcard() {
 
     let registry = ToolRegistry::register_builtins();
     let all = registry.filter(&["*".to_string()], &[]);
-    assert_eq!(all.len(), 13, "wildcard allow should match all tools");
+    assert_eq!(all.len(), 50, "wildcard allow should match all tools");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

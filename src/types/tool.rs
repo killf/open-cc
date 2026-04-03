@@ -26,7 +26,7 @@ pub trait Tool: Send + Sync {
 
     /// Optional aliases for the tool
     fn aliases(&self) -> Vec<String> {
-        vec![]
+        Vec::new()
     }
 
     /// Human-readable description

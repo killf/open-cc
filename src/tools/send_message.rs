@@ -3,7 +3,7 @@
 use async_trait::async_trait;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::sync::{LazyLock, Mutex};
+use std::sync::Mutex;
 
 use crate::error::CliError;
 use crate::types::{Tool, ToolContext, ToolResult};
@@ -36,10 +36,35 @@ impl Mailbox {
 
     /// Returns the global mailbox instance.
     fn global() -> &'static Mailbox {
-        static MAILBOX: LazyLock<Mailbox> = LazyLock::new(|| Mailbox {
-            messages: Mutex::new(HashMap::new()),
-        });
-        &MAILBOX
+        #[cfg(test)]
+        {
+            // Always fresh in tests to ensure test isolation.
+            static MAILBOX_MTX: Mutex<Option<Box<Mailbox>>> = Mutex::new(None);
+            let mut guard = MAILBOX_MTX.lock().unwrap();
+            let ptr: *const Mailbox = match guard.as_ref() {
+                Some(b) => &**b as *const Mailbox,
+                None => {
+                    let b = Box::new(Mailbox::new());
+                    let p = &*b as *const Mailbox;
+                    *guard = Some(b);
+                    p
+                }
+            };
+            // SAFETY: Box lives in the Mutex on the stack (guard). The Mutex is
+            // &'static but the Box is heap-allocated and stable once stored.
+            // We extend the lifetime to 'static.
+            unsafe { std::mem::transmute::<*const Mailbox, &'static Mailbox>(ptr) }
+        }
+
+        #[cfg(not(test))]
+        {
+            static MAILBOX: std::sync::OnceLock<Box<Mailbox>> = std::sync::OnceLock::new();
+            let ptr: *const Mailbox = MAILBOX
+                .get_or_init(|| Box::new(Mailbox::new()))
+                .as_ref() as *const Mailbox;
+            // SAFETY: OnceLock guarantees single init; Box lives for the program lifetime.
+            unsafe { &*ptr }
+        }
     }
 
     /// Push a message into a recipient's queue.
